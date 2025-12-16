@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Download, Trash2, Calendar, Clock, AlertTriangle, Eye, Shield, Settings } from 'lucide-react'; // Settings 아이콘 추가
+import { RefreshCw, Download, Trash2, Calendar, Clock, AlertTriangle, Eye, Shield, Settings } from 'lucide-react';
 import { S3Client, ListObjectsV2Command, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -17,7 +17,7 @@ export default function S3ImageViewer() {
   const [filterDate, setFilterDate] = useState('all'); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  // 💡 새로고침 간격 상태 추가 (기본값: 30초)
+  // 새로고침 간격 상태 (기본값: 30초)
   const [refreshIntervalSec, setRefreshIntervalSec] = useState(30); 
   const [stats, setStats] = useState({
     lastHour: 0,
@@ -36,11 +36,11 @@ export default function S3ImageViewer() {
 
   const bucketName = import.meta.env.VITE_AWS_BUCKET_NAME;
 
-  // S3에서 이미지 목록 가져오기 (변동 없음)
+  // S3에서 이미지 목록 가져오기
   const loadImagesFromS3 = async () => {
     setIsLoading(true);
     setError(null);
-    // ... (S3 로딩 로직은 동일)
+
     try {
       const command = new ListObjectsV2Command({
         Bucket: bucketName,
@@ -100,26 +100,25 @@ export default function S3ImageViewer() {
     }
   };
   
-  // 💡 useEffect 로직 수정: refreshIntervalSec이 변경될 때마다 타이머를 다시 설정
+  // useEffect 로직: refreshIntervalSec이 변경될 때마다 타이머를 다시 설정
   useEffect(() => {
     loadImagesFromS3();
     
-    // 간격을 밀리초로 변환
     const intervalMs = refreshIntervalSec * 1000;
     
+    if (intervalMs === 0) return () => {}; // 0초(정지)일 경우 타이머 설정 안 함
+
     const interval = setInterval(() => {
       loadImagesFromS3();
     }, intervalMs);
     
-    // cleanup 함수에서 이전 타이머를 클리어
     return () => clearInterval(interval);
-  }, [refreshIntervalSec]); // refreshIntervalSec이 의존성 배열에 포함됨
+  }, [refreshIntervalSec]); 
 
   const refreshImages = () => {
     loadImagesFromS3();
   };
   
-  // ... (handleDelete, handleDownload, sortImages, filterImages, handleStatClick 로직은 동일)
   const handleDelete = async (img) => {
     if (!confirm(`"${img.name}"을(를) 삭제하시겠습니까?`)) return;
 
@@ -207,7 +206,7 @@ export default function S3ImageViewer() {
   };
 
 
-  // 로딩/에러 화면 (변동 없음)
+  // 로딩/에러 화면 
   if (isLoading && images.length === 0) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center w-full">
@@ -215,6 +214,7 @@ export default function S3ImageViewer() {
           <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-lg">모니터링 데이터 로딩 중...</p>
         </div>
+        <div className='w-full' />
       </div>
     );
   }
@@ -239,7 +239,7 @@ export default function S3ImageViewer() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
-      {/* 헤더: 새로고침 간격 설정 드롭다운 추가 */}
+      {/* 헤더 */}
       <header className="bg-white shadow-md border-b border-gray-200">
         <div className="px-6 sm:px-12 xl:px-16 py-4 w-full">
           <div className="flex items-center justify-between">
@@ -254,7 +254,7 @@ export default function S3ImageViewer() {
             </div>
             
             <div className='flex items-center gap-4'>
-              {/* 💡 새로고침 간격 설정 드롭다운 */}
+              {/* 새로고침 간격 설정 드롭다운 */}
               <div className="flex items-center gap-2 border border-gray-300 rounded p-1 bg-gray-50 text-sm">
                 <Settings className="w-4 h-4 text-gray-600 ml-1" />
                 <span className='text-gray-700'>자동 새로고침:</span>
@@ -286,7 +286,7 @@ export default function S3ImageViewer() {
         </div>
       </header>
 
-      {/* 메인 컨텐츠 영역 (화면 확장 유지) */}
+      {/* 메인 컨텐츠 영역 */}
       <div className="px-6 sm:px-12 xl:px-16 py-6 w-full">
         {/* 경고 배너 (주의 문구 수정) */}
         <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3 w-full"> 
@@ -296,9 +296,6 @@ export default function S3ImageViewer() {
             <p className="text-gray-600 text-sm">기록되는 데이터는 법적으로 보호를 받고 있으며, 무단 도용 시 학생처 징계 및 법적 조치가 취해질 수 있습니다.</p>
           </div>
         </div>
-
-        {/* 통계 카드 (선택 효과 강화) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
         {/* 통계 카드 (선택 효과 강화) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
