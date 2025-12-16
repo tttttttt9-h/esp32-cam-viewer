@@ -14,7 +14,8 @@ export default function S3ImageViewer() {
   const [images, setImages] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [sortBy, setSortBy] = useState('newest');
-  const [filterDate, setFilterDate] = useState('all');
+  // filterDate 상태를 통계 카드와 연동하도록 초기값을 'all'로 설정
+  const [filterDate, setFilterDate] = useState('all'); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({
@@ -98,7 +99,6 @@ export default function S3ImageViewer() {
     }
   };
 
-  // 나머지 로직 함수는 변동 없음 (생략)
   useEffect(() => {
     loadImagesFromS3();
     const interval = setInterval(() => {
@@ -171,20 +171,42 @@ export default function S3ImageViewer() {
     return sorted;
   };
 
+  // filterImages 로직 수정: filterDate 값에 'lastHour', 'today', 'all'을 추가로 처리
   const filterImages = (imgs) => {
     if (filterDate === 'all') return imgs;
-    const now = new Date();
+    const now = Date.now();
+    
     const filtered = imgs.filter(img => {
-      const diff = now - img.timestamp;
-      if (filterDate === 'today') return diff < 24 * 60 * 60 * 1000;
+      const diff = now - img.timestamp.getTime();
+      
+      if (filterDate === 'lastHour') {
+        return diff < 60 * 60 * 1000;
+      }
+      if (filterDate === 'today') {
+        const todayStart = new Date().setHours(0, 0, 0, 0);
+        return img.timestamp.getTime() > todayStart;
+      }
+      // 이전 버전의 필터 (week, month) 유지
       if (filterDate === 'week') return diff < 7 * 24 * 60 * 60 * 1000;
       if (filterDate === 'month') return diff < 30 * 24 * 60 * 60 * 1000;
+      
       return true;
     });
     return filtered;
   };
 
   const displayImages = sortImages(filterImages(images));
+
+  // 통계 카드 클릭 핸들러
+  const handleStatClick = (filter) => {
+    setFilterDate(filter);
+    // 정렬 셀렉트 박스도 해당 값으로 업데이트
+    if (filter === 'lastHour' || filter === 'today' || filter === 'all') {
+      // 기본 기간 필터는 최신순으로 정렬되도록 유도
+      setSortBy('newest'); 
+    }
+  };
+
 
   // 로딩/에러 화면 (변동 없음)
   if (isLoading && images.length === 0) {
@@ -218,10 +240,9 @@ export default function S3ImageViewer() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
-      {/* 헤더: max-w-7xl 제거하고 좌우 패딩을 넓힘 */}
+      {/* 헤더: px-16으로 좌우 패딩을 더 늘려 화면 확장 */}
       <header className="bg-white shadow-md border-b border-gray-200">
-        {/* px-12로 넓은 화면에서 패딩 증가 */}
-        <div className="px-6 sm:px-12 py-4">
+        <div className="px-6 sm:px-12 xl:px-16 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-blue-500 p-2 rounded">
@@ -245,8 +266,8 @@ export default function S3ImageViewer() {
         </div>
       </header>
 
-      {/* 메인 컨텐츠 영역: max-w-7xl 제거하고 좌우 패딩을 넓힘 */}
-      <div className="px-6 sm:px-12 py-6">
+      {/* 메인 컨텐츠 영역: px-16으로 좌우 패딩을 더 늘려 화면 확장 */}
+      <div className="px-6 sm:px-12 xl:px-16 py-6">
         {/* 경고 배너 (변동 없음) */}
         <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3">
           <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
@@ -256,42 +277,60 @@ export default function S3ImageViewer() {
           </div>
         </div>
 
-        {/* 통계 (변동 없음) */}
+        {/* 통계 카드 (버튼 기능 추가) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+          {/* 최근 1시간 감지 */}
+          <button 
+            onClick={() => handleStatClick('lastHour')}
+            className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
+              filterDate === 'lastHour' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-600 text-sm font-medium">최근 1시간 감지</span>
-              <Eye className="w-5 h-5 text-blue-500" />
+              <Eye className={`w-5 h-5 ${filterDate === 'lastHour' ? 'text-blue-500' : 'text-gray-400'}`} />
             </div>
             <div className="text-3xl font-bold text-blue-700 mb-1">{stats.lastHour}건</div>
             <div className="text-gray-400 text-xs">LAST HOUR</div>
-          </div>
+          </button>
           
-          <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+          {/* 오늘 기록 */}
+          <button 
+            onClick={() => handleStatClick('today')}
+            className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
+              filterDate === 'today' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-600 text-sm font-medium">오늘 기록</span>
-              <Calendar className="w-5 h-5 text-blue-500" />
+              <Calendar className={`w-5 h-5 ${filterDate === 'today' ? 'text-blue-500' : 'text-gray-400'}`} />
             </div>
             <div className="text-3xl font-bold text-blue-700 mb-1">{stats.today}건</div>
             <div className="text-gray-400 text-xs">TODAY</div>
-          </div>
+          </button>
           
-          <div className="bg-white border border-gray-200 rounded p-6 shadow-sm">
+          {/* 전체 기록 */}
+          <button 
+            onClick={() => handleStatClick('all')}
+            className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
+              filterDate === 'all' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+            }`}
+          >
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-600 text-sm font-medium">전체 기록</span>
-              <Shield className="w-5 h-5 text-blue-500" />
+              <Shield className={`w-5 h-5 ${filterDate === 'all' ? 'text-blue-500' : 'text-gray-400'}`} />
             </div>
             <div className="text-3xl font-bold text-blue-700 mb-1">{stats.total}건</div>
             <div className="text-gray-400 text-xs">TOTAL RECORDS</div>
-          </div>
+          </button>
         </div>
 
-        {/* 필터 (변동 없음) */}
+        {/* 필터 (버튼 클릭에 따라 드롭다운 값 동기화) */}
         <div className="bg-white border border-gray-200 rounded p-4 mb-6 flex flex-wrap gap-4 items-center shadow-sm">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-500" />
             <select
-              value={filterDate}
+              value={filterDate === 'lastHour' ? 'today' : filterDate} // "1시간"은 드롭다운에 없으므로 "오늘"로 표시하거나 별도 처리
               onChange={(e) => setFilterDate(e.target.value)}
               className="px-3 py-2 bg-white border border-gray-300 rounded text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
@@ -320,7 +359,7 @@ export default function S3ImageViewer() {
           </div>
         </div>
 
-        {/* 이미지 그리드: PC 화면에서 더 많은 컬럼 사용 */}
+        {/* 이미지 그리드: PC 화면에서 더 많은 컬럼 사용 (xl:grid-cols-5, 2xl:grid-cols-6 추가) */}
         {displayImages.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded p-12 text-center shadow-sm">
             <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -328,7 +367,7 @@ export default function S3ImageViewer() {
             <p className="text-gray-400 text-sm mt-2">모니터링 시스템 대기 중</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             {displayImages.map((img) => (
               <div
                 key={img.id}
@@ -343,13 +382,11 @@ export default function S3ImageViewer() {
                     alt={img.name}
                     className="w-full h-full object-cover opacity-95 group-hover:opacity-100 transition-opacity"
                   />
-                  {/* NEW 뱃지 유지 */}
                   {(Date.now() - img.timestamp.getTime()) < 60 * 60 * 1000 && (
                     <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded font-bold animate-pulse">
                       NEW
                     </div>
                   )}
-                  {/* REC 뱃지 제거됨 */}
                 </div>
                 
                 <div className="p-3">
@@ -392,7 +429,7 @@ export default function S3ImageViewer() {
         )}
       </div>
 
-      {/* 이미지 상세 모달 */}
+      {/* 이미지 상세 모달 (변동 없음) */}
       {selectedImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
@@ -418,7 +455,6 @@ export default function S3ImageViewer() {
             </div>
             
             <div className="relative">
-              {/* 모달 내 REC 뱃지 제거됨 */}
               <img
                 src={selectedImage.url}
                 alt={selectedImage.name}
