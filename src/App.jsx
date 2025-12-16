@@ -226,6 +226,8 @@ export default function S3ImageViewer() {
             재연결 시도
           </button>
         </div>
+        {/* 이 영역도 너비를 확보하기 위한 가이드 (필요시 사용) */}
+        <div className="w-full" />
       </div>
     );
   }
@@ -317,8 +319,8 @@ export default function S3ImageViewer() {
           </button>
         </div>
 
-        {/* 정렬 옵션 */}
-        <div className="bg-white border border-gray-200 rounded p-4 mb-6 flex flex-wrap gap-4 items-center shadow-sm">
+        {/* 정렬 옵션: w-full 추가하여 너비 확보 */}
+        <div className="bg-white border border-gray-200 rounded p-4 mb-6 flex flex-wrap gap-4 items-center shadow-sm w-full"> 
           
           {/* 정렬 옵션 */}
           <div className="flex items-center gap-2">
@@ -343,7 +345,6 @@ export default function S3ImageViewer() {
         {displayImages.length === 0 ? (
           <div 
             className="bg-white border border-gray-200 rounded p-12 text-center shadow-sm w-full"
-            // !!! 중요 수정: 빈 div가 flex 부모 요소의 너비를 꽉 채우도록 w-full을 추가함 !!!
           >
             <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">기록된 데이터 없음</p>
