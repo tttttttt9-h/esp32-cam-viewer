@@ -28,7 +28,6 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  /* 💡 드래그 방지 CSS 추가 */
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
