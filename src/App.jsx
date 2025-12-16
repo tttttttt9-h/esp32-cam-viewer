@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Download, Trash2, Calendar, Clock, AlertTriangle, Eye, Shield } from 'lucide-react';
+import { RefreshCw, Download, Trash2, Calendar, Clock, AlertTriangle, Eye, Shield, Settings } from 'lucide-react'; // Settings 아이콘 추가
 import { S3Client, ListObjectsV2Command, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -17,6 +17,8 @@ export default function S3ImageViewer() {
   const [filterDate, setFilterDate] = useState('all'); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // 💡 새로고침 간격 상태 추가 (기본값: 30초)
+  const [refreshIntervalSec, setRefreshIntervalSec] = useState(30); 
   const [stats, setStats] = useState({
     lastHour: 0,
     today: 0,
@@ -38,7 +40,7 @@ export default function S3ImageViewer() {
   const loadImagesFromS3 = async () => {
     setIsLoading(true);
     setError(null);
-
+    // ... (S3 로딩 로직은 동일)
     try {
       const command = new ListObjectsV2Command({
         Bucket: bucketName,
@@ -97,19 +99,27 @@ export default function S3ImageViewer() {
       setIsLoading(false);
     }
   };
-
+  
+  // 💡 useEffect 로직 수정: refreshIntervalSec이 변경될 때마다 타이머를 다시 설정
   useEffect(() => {
     loadImagesFromS3();
+    
+    // 간격을 밀리초로 변환
+    const intervalMs = refreshIntervalSec * 1000;
+    
     const interval = setInterval(() => {
       loadImagesFromS3();
-    }, 5 * 60 * 1000);
+    }, intervalMs);
+    
+    // cleanup 함수에서 이전 타이머를 클리어
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshIntervalSec]); // refreshIntervalSec이 의존성 배열에 포함됨
 
   const refreshImages = () => {
     loadImagesFromS3();
   };
-
+  
+  // ... (handleDelete, handleDownload, sortImages, filterImages, handleStatClick 로직은 동일)
   const handleDelete = async (img) => {
     if (!confirm(`"${img.name}"을(를) 삭제하시겠습니까?`)) return;
 
@@ -191,21 +201,19 @@ export default function S3ImageViewer() {
 
   const displayImages = sortImages(filterImages(images));
 
-  // 통계 카드 클릭 핸들러 (변동 없음)
   const handleStatClick = (filter) => {
     setFilterDate(filter);
     setSortBy('newest'); 
   };
 
 
-  // 로딩/에러 화면 (너비 강제 지정)
+  // 로딩/에러 화면 (변동 없음)
   if (isLoading && images.length === 0) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center **w-full**">
-        <div className="text-center **w-full**">
+      <div className="min-h-screen bg-white flex items-center justify-center w-full">
+        <div className="text-center w-full">
           <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-lg">모니터링 데이터 로딩 중...</p>
-            {/* 빈 화면에서도 너비를 보장하기 위한 플레이스 홀더 제거 */}
         </div>
       </div>
     );
@@ -213,8 +221,8 @@ export default function S3ImageViewer() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 **w-full**">
-        <div className="bg-white border border-red-300 rounded shadow-lg p-8 max-w-md **w-full**">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 w-full">
+        <div className="bg-white border border-red-300 rounded shadow-lg p-8 max-w-md w-full">
           <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-red-600 text-center mb-2">시스템 오류</h2>
           <p className="text-gray-600 text-center mb-4">{error}</p>
@@ -231,10 +239,9 @@ export default function S3ImageViewer() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
-      {/* 헤더 (화면 확장 유지) */}
+      {/* 헤더: 새로고침 간격 설정 드롭다운 추가 */}
       <header className="bg-white shadow-md border-b border-gray-200">
-        {/* 헤더 컨테이너에 w-full 추가 */}
-        <div className="px-6 sm:px-12 xl:px-16 py-4 **w-full**">
+        <div className="px-6 sm:px-12 xl:px-16 py-4 w-full">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-blue-500 p-2 rounded">
@@ -246,21 +253,41 @@ export default function S3ImageViewer() {
               </div>
             </div>
             
-            <button
-              onClick={refreshImages}
-              disabled={isLoading}
-              className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 transition-colors disabled:opacity-50 font-medium"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              데이터 새로고침
-            </button>
+            <div className='flex items-center gap-4'>
+              {/* 💡 새로고침 간격 설정 드롭다운 */}
+              <div className="flex items-center gap-2 border border-gray-300 rounded p-1 bg-gray-50 text-sm">
+                <Settings className="w-4 h-4 text-gray-600 ml-1" />
+                <span className='text-gray-700'>자동 새로고침:</span>
+                <select
+                  value={refreshIntervalSec}
+                  onChange={(e) => setRefreshIntervalSec(Number(e.target.value))}
+                  className="px-1 py-1 bg-white border border-gray-300 rounded text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={0}>정지</option>
+                  <option value={5}>5초</option>
+                  <option value={10}>10초</option>
+                  <option value={15}>15초</option>
+                  <option value={30}>30초</option>
+                  <option value={60}>1분</option>
+                  <option value={300}>5분</option>
+                </select>
+              </div>
+            
+              <button
+                onClick={refreshImages}
+                disabled={isLoading}
+                className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 transition-colors disabled:opacity-50 font-medium"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                데이터 새로고침
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* 메인 컨텐츠 영역 (화면 확장 유지) */}
-      {/* 메인 컨텐츠 컨테이너에 w-full 추가 */}
-      <div className="px-6 sm:px-12 xl:px-16 py-6 **w-full**">
+      <div className="px-6 sm:px-12 xl:px-16 py-6 w-full">
         {/* 경고 배너 (변동 없음) */}
         <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3 w-full"> 
           <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
