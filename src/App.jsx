@@ -184,7 +184,6 @@ export default function S3ImageViewer() {
         const todayStart = new Date().setHours(0, 0, 0, 0);
         return img.timestamp.getTime() > todayStart;
       }
-      // 이전에 있던 filterDate 옵션 (week, month) 제거
       return true;
     });
     return filtered;
@@ -195,7 +194,6 @@ export default function S3ImageViewer() {
   // 통계 카드 클릭 핸들러 (변동 없음)
   const handleStatClick = (filter) => {
     setFilterDate(filter);
-    // 통계 필터 사용 시 정렬 기준을 '최신순'으로 초기화
     setSortBy('newest'); 
   };
 
@@ -207,6 +205,8 @@ export default function S3ImageViewer() {
         <div className="text-center">
           <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-lg">모니터링 데이터 로딩 중...</p>
+            {/* 빈 화면에서도 너비를 보장하기 위한 플레이스 홀더 */}
+          <div className="w-full xl:w-[calc(100vw-8rem)]" /> 
         </div>
       </div>
     );
@@ -275,7 +275,6 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('lastHour')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              // 선택 효과 강화: ring-2 -> ring-4
               filterDate === 'lastHour' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
@@ -291,7 +290,6 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('today')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              // 선택 효과 강화: ring-2 -> ring-4
               filterDate === 'today' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
@@ -307,7 +305,6 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('all')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              // 선택 효과 강화: ring-2 -> ring-4
               filterDate === 'all' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
@@ -320,10 +317,10 @@ export default function S3ImageViewer() {
           </button>
         </div>
 
-        {/* 정렬 옵션: 기간 드롭다운 제거 */}
+        {/* 정렬 옵션 */}
         <div className="bg-white border border-gray-200 rounded p-4 mb-6 flex flex-wrap gap-4 items-center shadow-sm">
           
-          {/* 정렬 옵션만 남김 */}
+          {/* 정렬 옵션 */}
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-500" />
             <select
@@ -342,9 +339,12 @@ export default function S3ImageViewer() {
           </div>
         </div>
 
-        {/* 이미지 그리드 */}
+        {/* 이미지 그리드 또는 데이터 없음 표시 */}
         {displayImages.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded p-12 text-center shadow-sm">
+          <div 
+            className="bg-white border border-gray-200 rounded p-12 text-center shadow-sm w-full"
+            // !!! 중요 수정: 빈 div가 flex 부모 요소의 너비를 꽉 채우도록 w-full을 추가함 !!!
+          >
             <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">기록된 데이터 없음</p>
             <p className="text-gray-400 text-sm mt-2">모니터링 시스템 대기 중</p>
