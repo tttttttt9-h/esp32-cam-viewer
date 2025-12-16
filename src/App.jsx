@@ -17,7 +17,6 @@ export default function S3ImageViewer() {
   const [filterDate, setFilterDate] = useState('all'); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  // 새로고침 간격 상태 (기본값: 30초)
   const [refreshIntervalSec, setRefreshIntervalSec] = useState(30); 
   const [stats, setStats] = useState({
     lastHour: 0,
@@ -36,7 +35,7 @@ export default function S3ImageViewer() {
 
   const bucketName = import.meta.env.VITE_AWS_BUCKET_NAME;
 
-  // S3에서 이미지 목록 가져오기
+  // S3에서 이미지 목록 가져오기 (변동 없음)
   const loadImagesFromS3 = async () => {
     setIsLoading(true);
     setError(null);
@@ -106,7 +105,7 @@ export default function S3ImageViewer() {
     
     const intervalMs = refreshIntervalSec * 1000;
     
-    if (intervalMs === 0) return () => {}; // 0초(정지)일 경우 타이머 설정 안 함
+    if (intervalMs === 0) return () => {}; 
 
     const interval = setInterval(() => {
       loadImagesFromS3();
@@ -288,7 +287,7 @@ export default function S3ImageViewer() {
 
       {/* 메인 컨텐츠 영역 */}
       <div className="px-6 sm:px-12 xl:px-16 py-6 w-full">
-        {/* 경고 배너 (주의 문구 수정) */}
+        {/* 경고 배너 */}
         <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3 w-full"> 
           <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
           <div>
@@ -297,13 +296,13 @@ export default function S3ImageViewer() {
           </div>
         </div>
 
-        {/* 통계 카드 (선택 효과 강화) */}
+        {/* 통계 카드 (선택 효과 강화: ring-4 -> ring-8, ring-blue-200 -> ring-blue-400) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* 최근 1시간 감지 */}
           <button 
             onClick={() => handleStatClick('lastHour')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              filterDate === 'lastHour' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
+              filterDate === 'lastHour' ? 'border-blue-500 ring-8 ring-blue-400' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -318,7 +317,7 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('today')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              filterDate === 'today' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
+              filterDate === 'today' ? 'border-blue-500 ring-8 ring-blue-400' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -333,7 +332,7 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('all')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              filterDate === 'all' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
+              filterDate === 'all' ? 'border-blue-500 ring-8 ring-blue-400' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -383,7 +382,7 @@ export default function S3ImageViewer() {
                 key={img.id}
                 // 이미지 선택 시 효과 강화
                 className={`bg-white border rounded overflow-hidden shadow-sm transition-colors cursor-pointer group 
-                  ${selectedImage?.id === img.id ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'}`}
+                  ${selectedImage?.id === img.id ? 'border-blue-500 ring-4 ring-blue-400' : 'border-gray-200 hover:border-blue-300'}`}
                 onClick={() => setSelectedImage(img)}
               >
                 <div
