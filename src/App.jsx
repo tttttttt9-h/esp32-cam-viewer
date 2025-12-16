@@ -288,14 +288,17 @@ export default function S3ImageViewer() {
 
       {/* 메인 컨텐츠 영역 (화면 확장 유지) */}
       <div className="px-6 sm:px-12 xl:px-16 py-6 w-full">
-        {/* 경고 배너 (변동 없음) */}
+        {/* 경고 배너 (주의 문구 수정) */}
         <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3 w-full"> 
           <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
           <div>
-            <p className="text-yellow-800 font-bold">⚠️ 주의: 모든 접근 로그가 기록됩니다</p>
-            <p className="text-gray-600 text-sm">무단 도용 시 학생처 징계 및 법적 조치가 취해질 수 있습니다</p>
+            <p className="text-yellow-800 font-bold">⚠️ 주의: 모든 로그가 기록됩니다.</p>
+            <p className="text-gray-600 text-sm">기록되는 데이터는 법적으로 보호를 받고 있으며, 무단 도용 시 학생처 징계 및 법적 조치가 취해질 수 있습니다.</p>
           </div>
         </div>
+
+        {/* 통계 카드 (선택 효과 강화) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
         {/* 통계 카드 (선택 효과 강화) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
