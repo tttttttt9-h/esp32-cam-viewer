@@ -198,15 +198,14 @@ export default function S3ImageViewer() {
   };
 
 
-  // 로딩/에러 화면 (변동 없음)
+  // 로딩/에러 화면 (너비 강제 지정)
   if (isLoading && images.length === 0) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-white flex items-center justify-center **w-full**">
+        <div className="text-center **w-full**">
           <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-lg">모니터링 데이터 로딩 중...</p>
-            {/* 빈 화면에서도 너비를 보장하기 위한 플레이스 홀더 */}
-          <div className="w-full xl:w-[calc(100vw-8rem)]" /> 
+            {/* 빈 화면에서도 너비를 보장하기 위한 플레이스 홀더 제거 */}
         </div>
       </div>
     );
@@ -214,8 +213,8 @@ export default function S3ImageViewer() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white border border-red-300 rounded shadow-lg p-8 max-w-md w-full">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 **w-full**">
+        <div className="bg-white border border-red-300 rounded shadow-lg p-8 max-w-md **w-full**">
           <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-red-600 text-center mb-2">시스템 오류</h2>
           <p className="text-gray-600 text-center mb-4">{error}</p>
@@ -226,8 +225,6 @@ export default function S3ImageViewer() {
             재연결 시도
           </button>
         </div>
-        {/* 이 영역도 너비를 확보하기 위한 가이드 (필요시 사용) */}
-        <div className="w-full" />
       </div>
     );
   }
@@ -236,7 +233,8 @@ export default function S3ImageViewer() {
     <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* 헤더 (화면 확장 유지) */}
       <header className="bg-white shadow-md border-b border-gray-200">
-        <div className="px-6 sm:px-12 xl:px-16 py-4">
+        {/* 헤더 컨테이너에 w-full 추가 */}
+        <div className="px-6 sm:px-12 xl:px-16 py-4 **w-full**">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-blue-500 p-2 rounded">
@@ -261,9 +259,10 @@ export default function S3ImageViewer() {
       </header>
 
       {/* 메인 컨텐츠 영역 (화면 확장 유지) */}
-      <div className="px-6 sm:px-12 xl:px-16 py-6">
+      {/* 메인 컨텐츠 컨테이너에 w-full 추가 */}
+      <div className="px-6 sm:px-12 xl:px-16 py-6 **w-full**">
         {/* 경고 배너 (변동 없음) */}
-        <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3">
+        <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3 w-full"> 
           <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
           <div>
             <p className="text-yellow-800 font-bold">⚠️ 주의: 모든 접근 로그가 기록됩니다</p>
@@ -319,7 +318,7 @@ export default function S3ImageViewer() {
           </button>
         </div>
 
-        {/* 정렬 옵션: w-full 추가하여 너비 확보 */}
+        {/* 정렬 옵션: w-full 유지 */}
         <div className="bg-white border border-gray-200 rounded p-4 mb-6 flex flex-wrap gap-4 items-center shadow-sm w-full"> 
           
           {/* 정렬 옵션 */}
