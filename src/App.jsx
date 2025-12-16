@@ -14,7 +14,6 @@ export default function S3ImageViewer() {
   const [images, setImages] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [sortBy, setSortBy] = useState('newest');
-  // filterDate 상태를 통계 카드와 연동하도록 초기값을 'all'로 설정
   const [filterDate, setFilterDate] = useState('all'); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -171,7 +170,6 @@ export default function S3ImageViewer() {
     return sorted;
   };
 
-  // filterImages 로직 수정: filterDate 값에 'lastHour', 'today', 'all'을 추가로 처리
   const filterImages = (imgs) => {
     if (filterDate === 'all') return imgs;
     const now = Date.now();
@@ -186,10 +184,7 @@ export default function S3ImageViewer() {
         const todayStart = new Date().setHours(0, 0, 0, 0);
         return img.timestamp.getTime() > todayStart;
       }
-      // 이전 버전의 필터 (week, month) 유지
-      if (filterDate === 'week') return diff < 7 * 24 * 60 * 60 * 1000;
-      if (filterDate === 'month') return diff < 30 * 24 * 60 * 60 * 1000;
-      
+      // 이전에 있던 filterDate 옵션 (week, month) 제거
       return true;
     });
     return filtered;
@@ -197,14 +192,11 @@ export default function S3ImageViewer() {
 
   const displayImages = sortImages(filterImages(images));
 
-  // 통계 카드 클릭 핸들러
+  // 통계 카드 클릭 핸들러 (변동 없음)
   const handleStatClick = (filter) => {
     setFilterDate(filter);
-    // 정렬 셀렉트 박스도 해당 값으로 업데이트
-    if (filter === 'lastHour' || filter === 'today' || filter === 'all') {
-      // 기본 기간 필터는 최신순으로 정렬되도록 유도
-      setSortBy('newest'); 
-    }
+    // 통계 필터 사용 시 정렬 기준을 '최신순'으로 초기화
+    setSortBy('newest'); 
   };
 
 
@@ -240,7 +232,7 @@ export default function S3ImageViewer() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
-      {/* 헤더: px-16으로 좌우 패딩을 더 늘려 화면 확장 */}
+      {/* 헤더 (화면 확장 유지) */}
       <header className="bg-white shadow-md border-b border-gray-200">
         <div className="px-6 sm:px-12 xl:px-16 py-4">
           <div className="flex items-center justify-between">
@@ -266,7 +258,7 @@ export default function S3ImageViewer() {
         </div>
       </header>
 
-      {/* 메인 컨텐츠 영역: px-16으로 좌우 패딩을 더 늘려 화면 확장 */}
+      {/* 메인 컨텐츠 영역 (화면 확장 유지) */}
       <div className="px-6 sm:px-12 xl:px-16 py-6">
         {/* 경고 배너 (변동 없음) */}
         <div className="bg-yellow-50 border border-yellow-300 rounded p-4 mb-6 flex items-center gap-3">
@@ -277,13 +269,14 @@ export default function S3ImageViewer() {
           </div>
         </div>
 
-        {/* 통계 카드 (버튼 기능 추가) */}
+        {/* 통계 카드 (선택 효과 강화) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* 최근 1시간 감지 */}
           <button 
             onClick={() => handleStatClick('lastHour')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              filterDate === 'lastHour' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+              // 선택 효과 강화: ring-2 -> ring-4
+              filterDate === 'lastHour' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -298,7 +291,8 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('today')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              filterDate === 'today' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+              // 선택 효과 강화: ring-2 -> ring-4
+              filterDate === 'today' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -313,7 +307,8 @@ export default function S3ImageViewer() {
           <button 
             onClick={() => handleStatClick('all')}
             className={`bg-white border rounded p-6 shadow-sm text-left transition-all ${
-              filterDate === 'all' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+              // 선택 효과 강화: ring-2 -> ring-4
+              filterDate === 'all' ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -325,22 +320,10 @@ export default function S3ImageViewer() {
           </button>
         </div>
 
-        {/* 필터 (버튼 클릭에 따라 드롭다운 값 동기화) */}
+        {/* 정렬 옵션: 기간 드롭다운 제거 */}
         <div className="bg-white border border-gray-200 rounded p-4 mb-6 flex flex-wrap gap-4 items-center shadow-sm">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <select
-              value={filterDate === 'lastHour' ? 'today' : filterDate} // "1시간"은 드롭다운에 없으므로 "오늘"로 표시하거나 별도 처리
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="px-3 py-2 bg-white border border-gray-300 rounded text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">전체 기간</option>
-              <option value="today">오늘</option>
-              <option value="week">최근 7일</option>
-              <option value="month">최근 30일</option>
-            </select>
-          </div>
           
+          {/* 정렬 옵션만 남김 */}
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-500" />
             <select
@@ -359,7 +342,7 @@ export default function S3ImageViewer() {
           </div>
         </div>
 
-        {/* 이미지 그리드: PC 화면에서 더 많은 컬럼 사용 (xl:grid-cols-5, 2xl:grid-cols-6 추가) */}
+        {/* 이미지 그리드 */}
         {displayImages.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded p-12 text-center shadow-sm">
             <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -371,10 +354,12 @@ export default function S3ImageViewer() {
             {displayImages.map((img) => (
               <div
                 key={img.id}
-                className="bg-white border border-gray-200 rounded overflow-hidden shadow-sm hover:border-blue-500 transition-colors cursor-pointer group"
+                // 이미지 선택 시 효과 강화
+                className={`bg-white border rounded overflow-hidden shadow-sm transition-colors cursor-pointer group 
+                  ${selectedImage?.id === img.id ? 'border-blue-500 ring-4 ring-blue-200' : 'border-gray-200 hover:border-blue-300'}`}
+                onClick={() => setSelectedImage(img)}
               >
                 <div
-                  onClick={() => setSelectedImage(img)}
                   className="aspect-video bg-gray-100 overflow-hidden relative"
                 >
                   <img
