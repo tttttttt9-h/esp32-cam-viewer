@@ -1,92 +1,45 @@
 /* !#/index.css */
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  /* 나머지 색상 변수 및 기본 설정은 Tailwind와 App.jsx에서 관리 */
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+/* 1. HTML과 BODY의 기본 여백 제거 및 높이 설정 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%; /* 화면 전체 높이 사용 */
+  overflow-x: hidden; /* 가로 스크롤 방지 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ----------------------------------------------------------------- */
-/* ⭐ 회사 홈페이지 폰트 및 배경색을 전역으로 적용하여 통일성 확보 */
-/* ----------------------------------------------------------------- */
+/* 2. BODY 폰트 및 배경 설정 */
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-  
-  /* 회사 홈페이지에서 사용한 애플 스타일 폰트 적용 */
   font-family: "SF Pro KR", "SF Pro Display", "Apple SD Gothic Neo", sans-serif;
-
-  /* 전역 배경색을 흰색으로 명시하여 깔끔한 기본 환경 제공 */
-  background-color: #ffffff; 
-
-  /* 드래그 방지 CSS (기존 유지) */
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* IE/Edge */
-  user-select: none; /* Standard */
-}
-/* ----------------------------------------------------------------- */
-
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  background-color: #ffffff;
+  color: #1d1d1f;
+  
+  /* 드래그 방지 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
-/* 기존 버튼 및 링크 스타일은 Tailwind 클래스에 의해 재정의되므로 큰 영향 없음 */
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* 3. ⭐ 중요: React의 최상위 루트 요소(#root)도 꽉 채우기 */
+#root {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-
+/* 기본 버튼 스타일 리셋 (선택 사항) */
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  border: none;
+  outline: none;
+  background: none;
   cursor: pointer;
-  transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-/* Tailwind 기본 및 유틸리티 클래스 */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
