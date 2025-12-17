@@ -47,7 +47,7 @@ export default function S3ImageViewer() {
 
     const bucketName = import.meta.env.VITE_AWS_BUCKET_NAME;
 
-    // S3에서 이미지 목록 가져오기
+    // S3에서 이미지 목록 가져오기 (로직 유지)
     const loadImagesFromS3 = async () => {
         setError(null);
         try {
@@ -102,7 +102,7 @@ export default function S3ImageViewer() {
         }
     };
     
-    // ⭐ 강제 다운로드 핸들러 (Blob 방식 사용)
+    // ⭐ 강제 다운로드 핸들러 (Blob 방식 재도입)
     const handleDownload = async (img) => {
         try {
             // S3의 서명된 URL을 사용하여 이미지 데이터를 fetch
@@ -133,7 +133,7 @@ export default function S3ImageViewer() {
         }
     };
 
-    // 삭제 핸들러
+    // 삭제 핸들러 (로직 유지)
     const handleDelete = async (img) => {
         if (!confirm(`정말로 "${img.name}" 파일을 삭제하시겠습니까?`)) {
             return;
@@ -157,49 +157,30 @@ export default function S3ImageViewer() {
         }
     };
 
-    // 정렬 로직
+    // 정렬/필터/StatClick 로직 (유지)
     const sortImages = (imgs) => {
         const sorted = [...imgs];
         switch (sortBy) {
-            case 'newest':
-                sorted.sort((a, b) => b.timestamp - a.timestamp);
-                break;
-            case 'oldest':
-                sorted.sort((a, b) => a.timestamp - b.timestamp);
-                break;
-            case 'name':
-                sorted.sort((a, b) => a.name.localeCompare(b.name));
-                break;
-            default:
-                break;
+            case 'newest': sorted.sort((a, b) => b.timestamp - a.timestamp); break;
+            case 'oldest': sorted.sort((a, b) => a.timestamp - b.timestamp); break;
+            case 'name': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+            default: break;
         }
         return sorted;
     };
-
-    // 필터 로직
     const filterImages = (imgs) => {
         const now = Date.now();
         const oneHourAgo = now - 60 * 60 * 1000;
         const todayStart = new Date().setHours(0, 0, 0, 0);
 
         switch (filterDate) {
-            case 'lastHour':
-                return imgs.filter(img => img.timestamp.getTime() > oneHourAgo);
-            case 'today':
-                return imgs.filter(img => img.timestamp.getTime() > todayStart);
-            case 'all':
-            default:
-                return imgs;
+            case 'lastHour': return imgs.filter(img => img.timestamp.getTime() > oneHourAgo);
+            case 'today': return imgs.filter(img => img.timestamp.getTime() > todayStart);
+            case 'all': default: return imgs;
         }
     };
-
     const displayImages = sortImages(filterImages(images));
-    
-    // 통계 클릭 시 필터 변경
-    const handleStatClick = (filter) => { 
-        setFilterDate(filter); 
-        setSortBy('newest'); 
-    };
+    const handleStatClick = (filter) => { setFilterDate(filter); setSortBy('newest'); };
 
     // 초기 로드 및 자동 새로고침 설정
     useEffect(() => {
@@ -209,7 +190,6 @@ export default function S3ImageViewer() {
         const interval = setInterval(() => { loadImagesFromS3(); }, intervalMs);
         return () => clearInterval(interval);
     }, [refreshIntervalSec]); 
-
     const refreshImages = () => { setIsLoading(true); loadImagesFromS3(); };
 
 
