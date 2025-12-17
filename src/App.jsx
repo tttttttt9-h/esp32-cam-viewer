@@ -102,18 +102,34 @@ export default function S3ImageViewer() {
         }
     };
     
-    // 다운로드 핸들러 (getSignedUrl을 사용하여 다운로드)
+    // ⭐ 강제 다운로드 핸들러 (Blob 방식 사용)
     const handleDownload = async (img) => {
         try {
+            // S3의 서명된 URL을 사용하여 이미지 데이터를 fetch
+            const response = await fetch(img.url);
+            
+            // 응답 데이터를 Blob(바이너리 파일 형태)으로 변환
+            const blob = await response.blob();
+            
+            // 이 Blob을 위한 임시 객체 URL 생성
+            const url = window.URL.createObjectURL(blob);
+            
+            // 다운로드를 위한 <a> 태그 생성 및 강제 다운로드 속성 지정
             const link = document.createElement('a');
-            link.href = img.url;
+            link.href = url;
             link.download = img.name; 
+            
+            // <a> 태그를 DOM에 추가하고 클릭 이벤트로 다운로드 시작
             document.body.appendChild(link);
             link.click();
+            
+            // 사용 후 임시 URL과 DOM 요소를 정리
             document.body.removeChild(link);
-        } catch (error) {
-            console.error('다운로드 오류:', error);
-            alert('다운로드에 실패했습니다.');
+            window.URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            console.error('다운로드 오류:', err);
+            alert('다운로드에 실패했습니다. 네트워크 상태를 확인하세요.');
         }
     };
 
@@ -177,7 +193,6 @@ export default function S3ImageViewer() {
         }
     };
 
-    // 데이터 표시 준비
     const displayImages = sortImages(filterImages(images));
     
     // 통계 클릭 시 필터 변경
@@ -198,7 +213,7 @@ export default function S3ImageViewer() {
     const refreshImages = () => { setIsLoading(true); loadImagesFromS3(); };
 
 
-    // 로딩 및 에러 화면
+    // 로딩 및 에러 화면 (변동 없음)
     if (isLoading && images.length === 0) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center w-full">
@@ -371,7 +386,7 @@ export default function S3ImageViewer() {
                 {/* 이미지 그리드 또는 데이터 없음 표시 */}
                 {displayImages.length === 0 ? (
                     <div 
-                        // h-full 클래스를 추가하여 남은 수직 공간을 채움
+                        // h-full과 min-h-[50vh]를 사용하여 비율 유지
                         className="bg-white border border-gray-200 rounded-lg p-16 text-center shadow-md w-full 
                                    flex flex-col items-center justify-center h-full min-h-[50vh]"
                     >
@@ -413,7 +428,7 @@ export default function S3ImageViewer() {
                                     </div>
                                     
                                     <div className="flex gap-2">
-                                        {/* 다운로드 버튼: e.stopPropagation() 적용 */}
+                                        {/* 다운로드 버튼: e.stopPropagation() 및 Blob 다운로드 로직 사용 */}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
