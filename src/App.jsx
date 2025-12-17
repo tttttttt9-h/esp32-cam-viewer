@@ -49,7 +49,6 @@ export default function S3ImageViewer() {
 
     // S3에서 이미지 목록 가져오기 (변동 없음)
     const loadImagesFromS3 = async () => {
-        // 로딩 시 UI 깜박임 방지를 위해 로딩 상태 업데이트는 마지막에 처리
         setError(null);
 
         try {
@@ -62,14 +61,13 @@ export default function S3ImageViewer() {
             if (!response.Contents || response.Contents.length === 0) {
                 setImages([]);
                 setStats({ lastHour: 0, today: 0, total: 0 });
-                setIsLoading(false);
+                // setIsLoading(false); // 로딩은 마지막 finally에서 처리
                 return;
             }
 
             const imagePromises = response.Contents
                 .filter(item => {
                     const key = item.Key.toLowerCase();
-                    // JPG, JPEG 파일만 필터링 (필요하다면 다른 이미지 형식 추가)
                     return key.endsWith('.jpg') || key.endsWith('.jpeg');
                 })
                 .map(async (item) => {
@@ -128,6 +126,7 @@ export default function S3ImageViewer() {
     }, [refreshIntervalSec]); 
 
     const refreshImages = () => {
+        setIsLoading(true); // 수동 새로고침 시 로딩 상태 재활성화
         loadImagesFromS3();
     };
     
@@ -171,7 +170,7 @@ export default function S3ImageViewer() {
             const link = document.createElement('a');
             link.href = url;
             link.download = img.name;
-            document.body.appendChild(link); // Firefox 호환성을 위해 body에 추가
+            document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
@@ -220,7 +219,7 @@ export default function S3ImageViewer() {
     };
 
 
-    // 로딩/에러 화면 (기존 스타일 유지)
+    // 로딩 화면 (화면 전체 채움)
     if (isLoading && images.length === 0) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center w-full">
@@ -233,6 +232,7 @@ export default function S3ImageViewer() {
         );
     }
 
+    // 에러 화면 (화면 전체 채움)
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 w-full">
@@ -251,10 +251,11 @@ export default function S3ImageViewer() {
         );
     }
 
+    // 메인 화면 (공백 제거를 위해 flex-col min-h-screen 적용)
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-800">
+        <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col"> 
             {/* 헤더 */}
-            <header className="bg-white shadow-lg border-b border-blue-200">
+            <header className="bg-white shadow-lg border-b border-blue-200 flex-shrink-0">
                 <div className="px-6 sm:px-12 xl:px-16 py-4 w-full max-w-7xl mx-auto">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -300,8 +301,8 @@ export default function S3ImageViewer() {
                 </div>
             </header>
 
-            {/* 메인 컨텐츠 영역 */}
-            <div className="px-6 sm:px-12 xl:px-16 py-8 w-full max-w-7xl mx-auto">
+            {/* 메인 컨텐츠 영역 (flex-grow 적용) */}
+            <div className="px-6 sm:px-12 xl:px-16 py-8 w-full max-w-7xl mx-auto flex-grow">
                 {/* 경고 배너 */}
                 <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-8 flex items-start gap-3 w-full shadow-sm"> 
                     <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -311,7 +312,7 @@ export default function S3ImageViewer() {
                     </div>
                 </div>
 
-                {/* 통계 카드 (선택 효과 강화 및 일관성 적용) */}
+                {/* 통계 카드 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {/* 최근 1시간 감지 */}
                     <button 
@@ -392,6 +393,7 @@ export default function S3ImageViewer() {
                 {displayImages.length === 0 ? (
                     <div 
                         className="bg-white border border-gray-200 rounded-lg p-16 text-center shadow-md w-full"
+                        style={{ minHeight: '50vh' }} /* 내용이 없을 때 최소 높이 확보 */
                     >
                         <Shield className="w-20 h-20 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-600 text-xl font-semibold">기록된 데이터 없음</p>
@@ -403,7 +405,6 @@ export default function S3ImageViewer() {
                             <div
                                 key={img.id}
                                 onClick={() => setSelectedImage(img)}
-                                // 이미지 선택 시 효과 강화 및 그림자 추가
                                 className={`bg-white border rounded-xl overflow-hidden shadow-lg transition-all duration-300 cursor-pointer group 
                                     ${selectedImage?.id === img.id 
                                         ? 'border-blue-600 ring-4 ring-blue-300 scale-[1.02]' 
