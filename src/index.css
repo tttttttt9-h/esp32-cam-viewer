@@ -1,11 +1,11 @@
+/* !#/index.css */
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* 나머지 색상 변수 및 기본 설정은 Tailwind와 App.jsx에서 관리 */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,6 +13,37 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ----------------------------------------------------------------- */
+/* ⭐ 핵심 수정: 회사 홈페이지 폰트 및 배경색을 전역으로 적용하여 통일성 확보 */
+/* ----------------------------------------------------------------- */
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  
+  /* 회사 홈페이지에서 사용한 애플 스타일 폰트 적용 */
+  font-family: "SF Pro KR", "SF Pro Display", "Apple SD Gothic Neo", sans-serif;
+
+  /* 전역 배경색을 흰색으로 명시하여 깔끔한 기본 환경 제공 */
+  background-color: #ffffff; 
+
+  /* 드래그 방지 CSS (기존 유지) */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE/Edge */
+  user-select: none; /* Standard */
+}
+/* ----------------------------------------------------------------- */
+
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* 기존 버튼 및 링크 스타일은 Tailwind 클래스에 의해 재정의되므로 큰 영향 없음 */
 a {
   font-weight: 500;
   color: #646cff;
@@ -22,23 +53,6 @@ a:hover {
   color: #535bf2;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-  /* 드래그 방지 CSS */
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* IE/Edge */
-  user-select: none; /* Standard */
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
 
 button {
   border-radius: 8px;
@@ -72,6 +86,7 @@ button:focus-visible {
   }
 }
 
+/* Tailwind 기본 및 유틸리티 클래스 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
