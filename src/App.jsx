@@ -3,14 +3,14 @@ import { RefreshCw, Download, Trash2, Calendar, Clock, AlertTriangle, Eye, Shiel
 import { S3Client, ListObjectsV2Command, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// 파일 크기 포맷팅 함수 (변동 없음)
+// 파일 크기 포맷팅 함수
 const formatFileSize = (bytes) => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 };
 
-// 타임스탬프 포맷팅 함수 (변동 없음)
+// 타임스탬프 포맷팅 함수
 const formatTimestamp = (timestamp) => {
     return timestamp.toLocaleString('ko-KR', {
         year: 'numeric',
@@ -36,7 +36,7 @@ export default function S3ImageViewer() {
         total: 0
     });
 
-    // S3 클라이언트 설정 (변동 없음)
+    // S3 클라이언트 설정
     const s3Client = new S3Client({
         region: import.meta.env.VITE_AWS_REGION,
         credentials: {
@@ -47,7 +47,7 @@ export default function S3ImageViewer() {
 
     const bucketName = import.meta.env.VITE_AWS_BUCKET_NAME;
 
-    // S3에서 이미지 목록 가져오기 (로직 유지)
+    // S3에서 이미지 목록 가져오기
     const loadImagesFromS3 = async () => {
         setError(null);
         try {
@@ -102,7 +102,91 @@ export default function S3ImageViewer() {
         }
     };
     
-    // useEffect 및 기타 함수 (로직 유지)
+    // 다운로드 핸들러 (getSignedUrl을 사용하여 다운로드)
+    const handleDownload = async (img) => {
+        try {
+            const link = document.createElement('a');
+            link.href = img.url;
+            link.download = img.name; 
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('다운로드 오류:', error);
+            alert('다운로드에 실패했습니다.');
+        }
+    };
+
+    // 삭제 핸들러
+    const handleDelete = async (img) => {
+        if (!confirm(`정말로 "${img.name}" 파일을 삭제하시겠습니까?`)) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const deleteCommand = new DeleteObjectCommand({ 
+                Bucket: bucketName, 
+                Key: img.key 
+            });
+            await s3Client.send(deleteCommand);
+            alert(`파일 "${img.name}"이(가) 성공적으로 삭제되었습니다.`);
+            setSelectedImage(null); // 모달 닫기
+            await loadImagesFromS3(); // 목록 새로고침
+        } catch (error) {
+            console.error('삭제 오류:', error);
+            alert('파일 삭제에 실패했습니다. 권한을 확인하세요.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 정렬 로직
+    const sortImages = (imgs) => {
+        const sorted = [...imgs];
+        switch (sortBy) {
+            case 'newest':
+                sorted.sort((a, b) => b.timestamp - a.timestamp);
+                break;
+            case 'oldest':
+                sorted.sort((a, b) => a.timestamp - b.timestamp);
+                break;
+            case 'name':
+                sorted.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            default:
+                break;
+        }
+        return sorted;
+    };
+
+    // 필터 로직
+    const filterImages = (imgs) => {
+        const now = Date.now();
+        const oneHourAgo = now - 60 * 60 * 1000;
+        const todayStart = new Date().setHours(0, 0, 0, 0);
+
+        switch (filterDate) {
+            case 'lastHour':
+                return imgs.filter(img => img.timestamp.getTime() > oneHourAgo);
+            case 'today':
+                return imgs.filter(img => img.timestamp.getTime() > todayStart);
+            case 'all':
+            default:
+                return imgs;
+        }
+    };
+
+    // 데이터 표시 준비
+    const displayImages = sortImages(filterImages(images));
+    
+    // 통계 클릭 시 필터 변경
+    const handleStatClick = (filter) => { 
+        setFilterDate(filter); 
+        setSortBy('newest'); 
+    };
+
+    // 초기 로드 및 자동 새로고침 설정
     useEffect(() => {
         loadImagesFromS3();
         const intervalMs = refreshIntervalSec * 1000;
@@ -112,15 +196,9 @@ export default function S3ImageViewer() {
     }, [refreshIntervalSec]); 
 
     const refreshImages = () => { setIsLoading(true); loadImagesFromS3(); };
-    const handleDelete = async (img) => { /* ... 삭제 로직 유지 ... */ };
-    const handleDownload = async (img) => { /* ... 다운로드 로직 유지 ... */ };
-    const sortImages = (imgs) => { /* ... 정렬 로직 유지 ... */ return [...imgs]; };
-    const filterImages = (imgs) => { /* ... 필터 로직 유지 ... */ return imgs; };
-    const displayImages = sortImages(filterImages(images));
-    const handleStatClick = (filter) => { setFilterDate(filter); setSortBy('newest'); };
 
 
-    // 로딩 및 에러 화면 (변동 없음)
+    // 로딩 및 에러 화면
     if (isLoading && images.length === 0) {
         return (
             <div className="min-h-screen bg-white flex items-center justify-center w-full">
@@ -151,13 +229,12 @@ export default function S3ImageViewer() {
         );
     }
 
-    // 메인 화면: W-FULL 및 꽉 채우기 적용
+    // 메인 화면: W-FULL 적용으로 화면 꽉 채움
     return (
         <div className="min-h-screen bg-white text-gray-800 flex flex-col w-full"> 
             
             {/* 헤더 */}
             <header className="bg-white shadow-lg border-b border-blue-200 flex-shrink-0">
-                {/* 헤더 컨테이너: 화면 끝까지 꽉 채우고 좌우 패딩만 적용 */}
                 <div className="px-4 sm:px-8 xl:px-12 py-4 w-full">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -203,7 +280,7 @@ export default function S3ImageViewer() {
                 </div>
             </header>
 
-            {/* 메인 컨텐츠 영역: 패딩만 적용하여 화면 끝까지 콘텐츠가 늘어납니다. */}
+            {/* 메인 컨텐츠 영역: 화면 끝까지 늘어나며, 내부 콘텐츠가 h-full을 상속받을 수 있도록 flex-grow 적용 */}
             <div className="p-4 sm:p-8 w-full flex-grow">
                 {/* 경고 배너 */}
                 <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-8 flex items-start gap-3 w-full shadow-sm"> 
@@ -294,8 +371,9 @@ export default function S3ImageViewer() {
                 {/* 이미지 그리드 또는 데이터 없음 표시 */}
                 {displayImages.length === 0 ? (
                     <div 
-                        className="bg-white border border-gray-200 rounded-lg p-16 text-center shadow-md w-full flex flex-col items-center justify-center"
-                        style={{ minHeight: '50vh' }}
+                        // h-full 클래스를 추가하여 남은 수직 공간을 채움
+                        className="bg-white border border-gray-200 rounded-lg p-16 text-center shadow-md w-full 
+                                   flex flex-col items-center justify-center h-full min-h-[50vh]"
                     >
                         <Shield className="w-20 h-20 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-600 text-xl font-semibold">기록된 데이터 없음</p>
@@ -335,6 +413,7 @@ export default function S3ImageViewer() {
                                     </div>
                                     
                                     <div className="flex gap-2">
+                                        {/* 다운로드 버튼: e.stopPropagation() 적용 */}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -345,6 +424,7 @@ export default function S3ImageViewer() {
                                             <Download className="w-3 h-3" />
                                             다운로드
                                         </button>
+                                        {/* 삭제 버튼: e.stopPropagation() 적용 */}
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -362,7 +442,7 @@ export default function S3ImageViewer() {
                 )}
             </div>
 
-            {/* 이미지 상세 모달 (변동 없음) */}
+            {/* 이미지 상세 모달 */}
             {selectedImage && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50"
