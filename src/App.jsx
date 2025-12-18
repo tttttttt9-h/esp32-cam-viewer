@@ -281,8 +281,8 @@ export default function S3ImageViewer() {
                 <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-8 flex items-start gap-3 w-full shadow-sm"> 
                     <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-yellow-800 font-bold text-lg">경고: 사내 기밀 정보 보호</p>
-                        <p className="text-gray-600 text-sm">본 모니터링 시스템의 기록되는 데이터는 법적으로 보호를 받고 있으며, 무단 도용 및 유포 시 회사 징계 및 법적 조치가 취해질 수 있습니다.</p>
+                        <p className="text-yellow-800 font-bold text-lg">경고: 용도 외 사용금지</p>
+                        <p className="text-gray-600 text-sm">본 모니터링 시스템의 기록되는 데이터는 본사에서 모니터링 할 수 있으며, 불법적 사용시 처벌받을 수 있습니다.</p>
                     </div>
                 </div>
 
