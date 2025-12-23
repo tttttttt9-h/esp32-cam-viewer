@@ -38,6 +38,19 @@ const formatTimestamp = (timestamp) => {
   });
 };
 
+// ✅ 전체 화면 로딩 오버레이 (클릭 차단)
+function FullScreenLoading({ message = '모니터링 데이터 확인중...' }) {
+  return (
+    <div className="fixed inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-[9999]">
+      <div className="text-center px-6 w-full">
+        <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+        <p className="text-gray-700 text-lg font-semibold">{message}</p>
+        <p className="text-gray-500 text-sm mt-2">잠시만 기다려주세요.</p>
+      </div>
+    </div>
+  );
+}
+
 export default function S3ImageViewer() {
   const [images, setImages] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -68,44 +81,62 @@ export default function S3ImageViewer() {
 
   const bucketName = import.meta.env.VITE_AWS_BUCKET_NAME;
 
-  // S3에서 이미지 목록 가져오기
+  // S3에서 이미지 목록 가져오기 (페이지네이션 포함)
   const loadImagesFromS3 = async () => {
     setError(null);
-    try {
-      const command = new ListObjectsV2Command({ Bucket: bucketName });
-      const response = await s3Client.send(command);
 
-      if (!response.Contents || response.Contents.length === 0) {
+    try {
+      let ContinuationToken = undefined;
+      const allItems = [];
+
+      do {
+        const command = new ListObjectsV2Command({
+          Bucket: bucketName,
+          ContinuationToken,
+        });
+        const response = await s3Client.send(command);
+
+        if (response.Contents?.length) {
+          allItems.push(...response.Contents);
+        }
+
+        ContinuationToken = response.IsTruncated
+          ? response.NextContinuationToken
+          : undefined;
+      } while (ContinuationToken);
+
+      if (!allItems.length) {
         setImages([]);
         setStats({ lastHour: 0, today: 0, total: 0 });
         return;
       }
 
-      const imagePromises = response.Contents.filter((item) => {
-        const key = (item.Key || '').toLowerCase();
-        return key.endsWith('.jpg') || key.endsWith('.jpeg');
-      }).map(async (item) => {
-        const getCommand = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: item.Key,
-        });
-        const url = await getSignedUrl(s3Client, getCommand, {
-          expiresIn: 3600,
-        });
+      const imagePromises = allItems
+        .filter((item) => {
+          const key = (item.Key || '').toLowerCase();
+          return key.endsWith('.jpg') || key.endsWith('.jpeg');
+        })
+        .map(async (item) => {
+          const getCommand = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: item.Key,
+          });
+          const url = await getSignedUrl(s3Client, getCommand, {
+            expiresIn: 3600,
+          });
 
-        return {
-          id: item.Key,
-          key: item.Key,
-          url,
-          name: item.Key.split('/').pop(),
-          timestamp: item.LastModified,
-          size: formatFileSize(item.Size),
-        };
-      });
+          return {
+            id: item.Key,
+            key: item.Key,
+            url,
+            name: item.Key.split('/').pop(),
+            timestamp: item.LastModified,
+            size: formatFileSize(item.Size),
+          };
+        });
 
       const imageList = await Promise.all(imagePromises);
       imageList.sort((a, b) => b.timestamp - a.timestamp);
-
       setImages(imageList);
 
       const now = Date.now();
@@ -149,8 +180,10 @@ export default function S3ImageViewer() {
     }
   };
 
-  // 삭제 핸들러
+  // 삭제 핸들러 (단일)
   const handleDelete = async (img) => {
+    if (isLoading || isDeletingAll) return;
+
     if (!confirm(`정말로 "${img.name}" 파일을 삭제하시겠습니까?`)) {
       return;
     }
@@ -173,8 +206,11 @@ export default function S3ImageViewer() {
     }
   };
 
-  // ✅ 사진 전체 삭제 (S3 jpg/jpeg 전부)
+  // ✅ 사진 전체 삭제: CORS(POST ?delete) 문제 회피를 위해 DeleteObject 반복
+  // (개별 삭제가 되는 환경이면 이 방식이 가장 확실히 동작)
   const deleteAllImages = async () => {
+    if (isLoading) return;
+
     if (
       !confirm(
         '정말로 S3의 사진(jpg/jpeg)을 전체 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'
@@ -187,40 +223,28 @@ export default function S3ImageViewer() {
       setIsDeletingAll(true);
       setIsLoading(true);
 
-      let ContinuationToken = undefined;
-      let deletedCount = 0;
+      const targets = images.filter((img) => {
+        const k = (img.key || '').toLowerCase();
+        return k.endsWith('.jpg') || k.endsWith('.jpeg');
+      });
 
-      do {
-        const listRes = await s3Client.send(
-          new ListObjectsV2Command({
-            Bucket: bucketName,
-            ContinuationToken,
+      let deleted = 0;
+
+      // 과도한 동시 요청 방지: 5개씩 병렬 처리
+      const chunkSize = 5;
+      for (let i = 0; i < targets.length; i += chunkSize) {
+        const chunk = targets.slice(i, i + chunkSize);
+        await Promise.all(
+          chunk.map(async (img) => {
+            await s3Client.send(
+              new DeleteObjectCommand({ Bucket: bucketName, Key: img.key })
+            );
+            deleted += 1;
           })
         );
+      }
 
-        const objects = (listRes.Contents || [])
-          .filter((o) => {
-            const key = (o.Key || '').toLowerCase();
-            return key.endsWith('.jpg') || key.endsWith('.jpeg');
-          })
-          .map((o) => ({ Key: o.Key }));
-
-        if (objects.length > 0) {
-          await s3Client.send(
-            new DeleteObjectsCommand({
-              Bucket: bucketName,
-              Delete: { Objects: objects, Quiet: true },
-            })
-          );
-          deletedCount += objects.length;
-        }
-
-        ContinuationToken = listRes.IsTruncated
-          ? listRes.NextContinuationToken
-          : undefined;
-      } while (ContinuationToken);
-
-      alert(`사진 전체 삭제 완료: ${deletedCount}개 삭제`);
+      alert(`사진 전체 삭제 완료: ${deleted}개 삭제`);
       setSelectedImage(null);
       await loadImagesFromS3();
     } catch (e) {
@@ -269,6 +293,7 @@ export default function S3ImageViewer() {
 
   const displayImages = sortImages(filterImages(images));
   const handleStatClick = (filter) => {
+    if (isLoading || isDeletingAll) return;
     setFilterDate(filter);
     setSortBy('newest');
   };
@@ -281,31 +306,28 @@ export default function S3ImageViewer() {
     if (intervalMs === 0) return () => {};
 
     const interval = setInterval(() => {
-      loadImagesFromS3();
+      // 삭제중이면 자동 새로고침 스킵(충돌 방지)
+      if (!isDeletingAll) {
+        loadImagesFromS3();
+      }
     }, intervalMs);
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshIntervalSec]);
+  }, [refreshIntervalSec, isDeletingAll]);
 
   const refreshImages = () => {
+    if (isDeletingAll) return;
     setIsLoading(true);
     loadImagesFromS3();
   };
 
-  // 로딩 및 에러 화면
+  // 초기 로딩 화면: 전체화면
   if (isLoading && images.length === 0) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center w-full">
-        <div className="text-center w-full">
-          <RefreshCw className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 text-lg">모니터링 데이터 로딩 중...</p>
-        </div>
-        <div className="w-full" />
-      </div>
-    );
+    return <FullScreenLoading message="모니터링 데이터 로딩 중..." />;
   }
 
+  // 에러 화면
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 w-full">
@@ -329,6 +351,13 @@ export default function S3ImageViewer() {
   // 메인 화면
   return (
     <div className="min-h-screen bg-white text-gray-800 flex flex-col w-full">
+      {/* ✅ 새로고침/삭제중 오버레이: 클릭 완전 차단 */}
+      {(isLoading || isDeletingAll) && images.length > 0 && (
+        <FullScreenLoading
+          message={isDeletingAll ? '사진 전체 삭제중...' : '모니터링 데이터 확인중...'}
+        />
+      )}
+
       {/* 헤더 */}
       <header className="bg-white shadow-lg border-b border-blue-200 flex-shrink-0">
         <div className="px-4 sm:px-8 xl:px-12 py-4 w-full">
@@ -355,7 +384,8 @@ export default function S3ImageViewer() {
                 <select
                   value={refreshIntervalSec}
                   onChange={(e) => setRefreshIntervalSec(Number(e.target.value))}
-                  className="px-2 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+                  disabled={isLoading || isDeletingAll}
+                  className="px-2 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer disabled:opacity-60"
                 >
                   <option value={0}>정지</option>
                   <option value={5}>5초</option>
@@ -380,7 +410,7 @@ export default function S3ImageViewer() {
               {/* 새로고침 */}
               <button
                 onClick={refreshImages}
-                disabled={isLoading}
+                disabled={isLoading || isDeletingAll}
                 className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50 font-semibold text-sm"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -408,7 +438,8 @@ export default function S3ImageViewer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <button
             onClick={() => handleStatClick('lastHour')}
-            className={`bg-white border rounded-xl p-6 shadow-xl text-left transition-all duration-300 ease-in-out ${
+            disabled={isLoading || isDeletingAll}
+            className={`bg-white border rounded-xl p-6 shadow-xl text-left transition-all duration-300 ease-in-out disabled:opacity-60 ${
               filterDate === 'lastHour'
                 ? 'border-blue-600 ring-8 ring-blue-200'
                 : 'border-gray-200 hover:shadow-lg hover:border-blue-100'
@@ -424,7 +455,8 @@ export default function S3ImageViewer() {
 
           <button
             onClick={() => handleStatClick('today')}
-            className={`bg-white border rounded-xl p-6 shadow-xl text-left transition-all duration-300 ease-in-out ${
+            disabled={isLoading || isDeletingAll}
+            className={`bg-white border rounded-xl p-6 shadow-xl text-left transition-all duration-300 ease-in-out disabled:opacity-60 ${
               filterDate === 'today'
                 ? 'border-blue-600 ring-8 ring-blue-200'
                 : 'border-gray-200 hover:shadow-lg hover:border-blue-100'
@@ -440,7 +472,8 @@ export default function S3ImageViewer() {
 
           <button
             onClick={() => handleStatClick('all')}
-            className={`bg-white border rounded-xl p-6 shadow-xl text-left transition-all duration-300 ease-in-out ${
+            disabled={isLoading || isDeletingAll}
+            className={`bg-white border rounded-xl p-6 shadow-xl text-left transition-all duration-300 ease-in-out disabled:opacity-60 ${
               filterDate === 'all'
                 ? 'border-blue-600 ring-8 ring-blue-200'
                 : 'border-gray-200 hover:shadow-lg hover:border-blue-100'
@@ -463,7 +496,8 @@ export default function S3ImageViewer() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              disabled={isLoading || isDeletingAll}
+              className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer disabled:opacity-60"
             >
               <option value="newest">최신순</option>
               <option value="oldest">오래된순</option>
@@ -488,7 +522,10 @@ export default function S3ImageViewer() {
             {displayImages.map((img) => (
               <div
                 key={img.id}
-                onClick={() => setSelectedImage(img)}
+                onClick={() => {
+                  if (isLoading || isDeletingAll) return;
+                  setSelectedImage(img);
+                }}
                 className={`bg-white border rounded-xl overflow-hidden shadow-lg transition-all duration-300 cursor-pointer group ${
                   selectedImage?.id === img.id
                     ? 'border-blue-600 ring-4 ring-blue-300 scale-[1.02]'
@@ -519,9 +556,11 @@ export default function S3ImageViewer() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (isLoading || isDeletingAll) return;
                         handleDownload(img);
                       }}
-                      className="flex-1 flex items-center justify-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors border border-gray-300 shadow-sm"
+                      disabled={isLoading || isDeletingAll}
+                      className="flex-1 flex items-center justify-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors border border-gray-300 shadow-sm disabled:opacity-50"
                     >
                       <Download className="w-3 h-3" />
                       다운로드
@@ -532,7 +571,8 @@ export default function S3ImageViewer() {
                         e.stopPropagation();
                         handleDelete(img);
                       }}
-                      className="flex items-center justify-center bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-600 transition-colors shadow-sm"
+                      disabled={isLoading || isDeletingAll}
+                      className="flex items-center justify-center bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-600 transition-colors shadow-sm disabled:opacity-50"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -558,7 +598,8 @@ export default function S3ImageViewer() {
               <div>
                 <h3 className="font-mono text-xl text-gray-800 font-bold">{selectedImage.name}</h3>
                 <p className="text-sm text-gray-500">
-                  {formatTimestamp(selectedImage.timestamp)} · <span className="font-semibold">{selectedImage.size}</span>
+                  {formatTimestamp(selectedImage.timestamp)} ·{' '}
+                  <span className="font-semibold">{selectedImage.size}</span>
                 </p>
               </div>
               <button
@@ -580,14 +621,16 @@ export default function S3ImageViewer() {
             <div className="p-4 border-t border-gray-200 flex gap-3">
               <button
                 onClick={() => handleDownload(selectedImage)}
-                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
+                disabled={isLoading || isDeletingAll}
+                className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md disabled:opacity-50"
               >
                 <Download className="w-5 h-5" />
                 원본 다운로드
               </button>
               <button
                 onClick={() => handleDelete(selectedImage)}
-                className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold shadow-md"
+                disabled={isLoading || isDeletingAll}
+                className="flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold shadow-md disabled:opacity-50"
               >
                 <Trash2 className="w-5 h-5" />
                 삭제
